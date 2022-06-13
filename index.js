@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 
@@ -145,7 +145,7 @@ async function run() {
          * app.delete('/booking/:id') // delete a specific booking
         */
 
-        // for email as query patient in bookings collection
+        // for email as query, patient, in bookings collection
         app.get('/booking', verifyJWT, async (req, res) => {
             const patient = req.query.patient;
             const decodedEmail = req.decoded.email;
@@ -158,6 +158,15 @@ async function run() {
                 return res.status(403).send({ message: 'Forbidden access' });
             }
 
+        })
+
+        // load or find the booking using id
+        // verifyJWT,
+        app.get('/booking/id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const booking = await bookingCollection.findOne(query);
+            res.send(booking);
         })
 
 
