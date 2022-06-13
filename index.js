@@ -177,14 +177,15 @@ async function run() {
 
         // load doctor info
         // verifyJWT, verifyAdmin,
-        app.get('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
+        app.get('/doctor', async (req, res) => {
             const doctors = await doctorCollection.find().toArray();
             res.send(doctors);
         })
 
 
         // POST (doctor info)
-        app.post('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
+        // verifyJWT, verifyAdmin,
+        app.post('/doctor', async (req, res) => {
             const doctor = req.body;// image url is a kind of text
             const result = await doctorCollection.insertOne(doctor);
             res.send(result);
@@ -192,7 +193,8 @@ async function run() {
 
 
         // delete a doctor
-        app.delete('/doctor/:email', verifyJWT, verifyAdmin, async (req, res) => {
+        // verifyJWT, verifyAdmin,
+        app.delete('/doctor/:email', async (req, res) => {
             const email = req.params.email;
             const filter = { email: email };
             const result = await doctorCollection.deleteOne(filter);
