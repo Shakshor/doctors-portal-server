@@ -80,6 +80,7 @@ async function run() {
         })
 
         // for admin role
+        // verifyJWT, verifyAdmin,
         app.put('/user/admin/:email', verifyJWT, verifyAdmin, async (req, res) => {
             const email = req.params.email;
             const filter = { email: email };
@@ -102,6 +103,7 @@ async function run() {
             };
             const result = await userCollection.updateOne(filter, updateDoc, options);
             const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '24d' })
+            // const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '24d' })
             res.send({ result, token });
         });
 
