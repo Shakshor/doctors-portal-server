@@ -3,8 +3,8 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
-
 const app = express();
 
 // middleware
@@ -20,6 +20,7 @@ const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology:
 
 // middle-tier function for verify token
 function verifyJWT(req, res, next) {
+    // console.log(req.headers.authorization);
     const authHeader = req.headers.authorization;
     if (!authHeader) {
         return res.status(401).send({ message: 'UnAuthorized access' })
@@ -50,7 +51,7 @@ async function run() {
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
             const requesterAccount = await userCollection.findOne({ email: requester });
-            if (requesterAccount === 'admin') {
+            if (requesterAccount.role === 'admin') {
                 next();
             }
             else {
@@ -66,7 +67,8 @@ async function run() {
             res.send(services);
         });
 
-        app.get('/user', verifyJWT, async (req, res) => {
+        // verifyJWT,
+        app.get('/user', async (req, res) => {
             const users = await userCollection.find().toArray();
             res.send(users);
         });
@@ -102,9 +104,9 @@ async function run() {
                 $set: user,
             };
             const result = await userCollection.updateOne(filter, updateDoc, options);
-            const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '24d' })
-            // const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '24d' })
-            res.send({ result, token });
+            const newToken = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '24d' });
+
+            res.send({ result, newToken });
         });
 
         /* --------- Warning ------------------- */
@@ -165,7 +167,7 @@ async function run() {
 
         // load or find the booking using id
         // verifyJWT,
-        app.get('/booking/id', async (req, res) => {
+        app.get('/booking/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const booking = await bookingCollection.findOne(query);
@@ -187,9 +189,26 @@ async function run() {
         });
 
 
+        // payment intense post api
+        // verifyJWT,
+        app.post('create-payment-intent', verifyJWT, async (req, res) => {
+            const service = req.body;
+            const price = service.price;
+            console.log(price);
+            const amount = price * 100;// amount should be counted in paisa
+            // payment intent
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['çard']
+            });
+            res.send({ clientSecret: paymentIntent.client_secret });
+        })
+
+
         // load doctor info
         // verifyJWT, verifyAdmin,
-        app.get('/doctor', async (req, res) => {
+        app.get('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
             const doctors = await doctorCollection.find().toArray();
             res.send(doctors);
         })
@@ -197,7 +216,7 @@ async function run() {
 
         // POST (doctor info)
         // verifyJWT, verifyAdmin,
-        app.post('/doctor', async (req, res) => {
+        app.post('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
             const doctor = req.body;// image url is a kind of text
             const result = await doctorCollection.insertOne(doctor);
             res.send(result);
